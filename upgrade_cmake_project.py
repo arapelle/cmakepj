@@ -97,6 +97,28 @@ class ProjectCMakeListsFile(CMakeListsFile):
         return pr_version_regex
 
 
+class CMakeProject:
+    def __init__(self, repository_path):
+        self.__repository = Repo(repository_path)
+        self.__project_cmakelists_file = ProjectCMakeListsFile(f"{repository_path}/CMakeLists.txt")
+
+    def upgrade(self, release_comp: ReleaseComponent):
+        new_cmake_file = self.__project_cmakelists_file.upgraded_file(release_comp)
+        self.__project_cmakelists_file = new_cmake_file
+        new_cmake_file.save()
+
+    def checkout_develop_branch(self, branch):
+        print(f"INFO - Checkout {branch}")
+        self.__repository.git.checkout(f'{branch}')
+
+    def commit_start_version(self, new_project_version):
+        print("INFO - Add CMakeLists.txt to index")
+        self.__repository.index.add(["CMakeLists.txt"])
+        print("INFO - Commit")
+        self.__repository.index.commit(f"v{new_project_version}: Start version {new_project_version}.")
+
+
+
 class CMakeProjectUpgrader:
     def __init__(self, repository_path):
         self.__repository = Repo(repository_path)
@@ -179,8 +201,7 @@ project_version, new_project_version = upgrader.upgrade_version_in_project_cmake
 upgrader.upgrade_version_in_examples_cmakelists_txt(project_version, new_project_version)
 # upgrader.commit_start_version(new_project_version)
 
-cmake_file = ProjectCMakeListsFile('CMakeLists.txt')
-new_cmake_file = cmake_file.upgraded_file(ReleaseComponent.MINOR)
-new_cmake_file.save()
+cmake_project = CMakeProject(".")
+cmake_project.upgrade(ReleaseComponent.MINOR)
 
 print('EXIT SUCCESS')
