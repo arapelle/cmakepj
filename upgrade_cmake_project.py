@@ -45,37 +45,51 @@ class CMakeListsFile:
         with open(file_path, "w", newline='\n') as file:
             file.write(self._contents)
 
-    def update_dependency_version(self, current_version, new_version):
-        fp_version_regex = CMakeListsFile.__find_package_version_regex(current_version)
-        fp_version_match: re.Match = fp_version_regex.search(self._contents)
-        if fp_version_match is not None:
-            print(f"    matching. converting to new_version: {new_version}")
-#           contents.replace()
+    def update_dependency_version(self, dependency_name, current_version, new_version):
+        regex = CMakeListsFile.__find_dependency(dependency_name, current_version)
+        match: re.Match = regex.search(self._contents)
+        if match is not None:
+            self._contents = self._contents.replace(match.group(0),
+                                                    self.__format_dependency(dependency_name, new_version))
 
     @staticmethod
-    def __find_package_version_regex(current_version):
-        print(f"current_version: {current_version}")
-        version_regex = re.compile(r"find_package\(([^\s]+\s+)" + current_version + r"(\s+.*\#project-version)",
-                                      re.VERBOSE | re.IGNORECASE)
+    def __format_dependency(dependency_name, version):
+        return f"find_package({dependency_name} {version}"
+
+    @staticmethod
+    def __find_dependency(dependency_name, current_version):
+        version_regex = re.compile(r"find_package\(\s*" + dependency_name + r"\s+" + current_version)
         return version_regex
 
 
 class ProjectCMakeListsFile(CMakeListsFile):
     def __init__(self, file_path):
         super(ProjectCMakeListsFile, self).__init__()
+        self.__project_name = None
         self.__project_version = None
         self.load(file_path)
 
     def load(self, file_path):
         super().load(file_path)
-        # self.__project_name = ...
+        self.__project_name = self.__find_project_name()
         # self.__package_name = ...
         # self.__project_full_version = ...
         self.__project_version = self.__find_project_version()
 
     @property
+    def project_name(self):
+        return self.__project_name
+
+    @property
     def project_version(self):
         return self.__project_version
+
+    def __find_project_name(self):
+        regex = ProjectCMakeListsFile.__project_name_regex()
+        match: re.Match = regex.search(self._contents)
+        if match is None:
+            raise Exception("ERROR - Project name not found.")
+        return match.group(1)
 
     def __find_project_version(self):
         pr_version_match = self.__find_project_version_match()
@@ -112,45 +126,69 @@ class ProjectCMakeListsFile(CMakeListsFile):
         self._contents = self._contents.replace(self.__find_project_version_declaration(), new_pj_version_declaration)
 
     @staticmethod
+    def __format_project_name_declaration(project_name):
+        return f"set(PROJECT_NAME {project_name})"
+
+    @staticmethod
     def __format_project_version_declaration(project_version):
-        return f"VERSION {project_version} #project-version"
+        return f"set(PROJECT_VERSION {project_version})"
+
+    @staticmethod
+    def __project_name_regex():
+        return re.compile(r"set\(PROJECT_NAME\s+([^\s]+)\s*\)")
 
     @staticmethod
     def __project_version_regex():
-        pr_version_regex = re.compile(r"VERSION\s+(" + packaging.version.VERSION_PATTERN + r")\s*\#project-version",
-                                      re.VERBOSE | re.IGNORECASE)
-        return pr_version_regex
+        return re.compile(r"set\(PROJECT_VERSION\s+(" + packaging.version.VERSION_PATTERN + r")\s*\)",
+                          re.VERBOSE | re.IGNORECASE)
 
 
 class CMakeProject:
     def __init__(self, repository_path):
+        print(f"INFO - Load git repository.")
         self.__repository = Repo(repository_path)
+        print(f"INFO - Load project CMakeLists.txt.")
         self.__project_cmakelists_file = ProjectCMakeListsFile(f"{repository_path}/CMakeLists.txt")
 
-    def upgrade(self, release_comp: ReleaseComponent):
+    def project_name(self):
+        return self.__project_cmakelists_file.project_name
+
+    def project_version(self):
+        return self.__project_cmakelists_file.project_version
+
+    def upgrade_project_version(self, release_comp: ReleaseComponent):
         old_project_version = self.__project_cmakelists_file.project_version
         self.__project_cmakelists_file.upgrade_project_version(release_comp)
         new_project_version = self.__project_cmakelists_file.project_version
         self.__project_cmakelists_file.save()
+        self.update_dependency_version(self.__project_cmakelists_file.project_name,
+                                       old_project_version, new_project_version)
+
+    def update_dependency_version(self, dependency_name, old_version, new_version):
         cmakelists_files = glob.glob("**/CMakeLists.txt", recursive=True)
         for cmakelists_file_path in cmakelists_files:
-            print(f"  Treating file '{cmakelists_file_path}'")
             cmakelists_file = CMakeListsFile()
             cmakelists_file.load(cmakelists_file_path)
-            cmakelists_file.update_dependency_version(old_project_version, new_project_version)
+            cmakelists_file.update_dependency_version(dependency_name, old_version, new_version)
+            cmakelists_file.save()
 
     def checkout_develop_branch(self, branch):
-        print(f"INFO - Checkout {branch}")
+        print(f"INFO - Checkout {branch}.")
         self.__repository.git.checkout(f'{branch}')
 
-    def commit_start_version(self, new_project_version):
-        print("INFO - Add CMakeLists.txt to index")
-        self.__repository.index.add(["CMakeLists.txt"])
-        print("INFO - Commit")
-        self.__repository.index.commit(f"v{new_project_version}: Start version {new_project_version}.")
+    def commit_start_version(self):
+        files = [item.a_path for item in self.__repository.index.diff(None)]
+        print(f"INFO - Add modified files ({len(files)}).")
+        self.__repository.index.add(files)
+        version = self.__project_cmakelists_file.project_version
+        print(f"INFO - Commit start version {version}.")
+        commit_msg = f"v{version}: Start version {version}."
+        self.__repository.index.commit(commit_msg)
 
 
 cmake_project = CMakeProject(".")
-cmake_project.upgrade(ReleaseComponent.MINOR)
+print(f"INFO - CMake project {cmake_project.project_name()} {cmake_project.project_version()}")
+cmake_project.upgrade_project_version(ReleaseComponent.MINOR)
+cmake_project.commit_start_version()
 
 print('EXIT SUCCESS')
