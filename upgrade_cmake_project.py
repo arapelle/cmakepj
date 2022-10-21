@@ -178,7 +178,7 @@ class CMakeProject:
             cmakelists_file.update_dependency_version(dependency_name, old_version, new_version)
             cmakelists_file.save()
 
-    def checkout_develop_branch(self, branch):
+    def checkout_develop_branch(self, branch='develop'):
         print(f"INFO - Checkout {branch}.")
         self.__repository.git.checkout(f'{branch}')
 
