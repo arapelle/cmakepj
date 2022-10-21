@@ -6,6 +6,7 @@ import re
 from copy import deepcopy
 from enum import Enum, IntEnum
 
+import git.config
 import packaging.version
 from packaging.version import Version, parse
 from git import Repo
@@ -146,6 +147,7 @@ class ProjectCMakeListsFile(CMakeListsFile):
 class CMakeProject:
     def __init__(self, repository_path):
         print(f"INFO - Load git repository.")
+        self.__git = git.Git = git.Git(git.Git.GIT_PYTHON_GIT_EXECUTABLE)
         self.__repository = Repo(repository_path)
         print(f"INFO - Load project CMakeLists.txt.")
         self.__project_cmakelists_file = ProjectCMakeListsFile(f"{repository_path}/CMakeLists.txt")
@@ -156,15 +158,19 @@ class CMakeProject:
     def project_version(self):
         return self.__project_cmakelists_file.project_version
 
-    def upgrade_project_version(self, release_comp: ReleaseComponent):
+    def upgrade_project_version(self, release_comp: ReleaseComponent, commit=True):
+        print(f"INFO - Upgrade project {release_comp} version.")
         old_project_version = self.__project_cmakelists_file.project_version
         self.__project_cmakelists_file.upgrade_project_version(release_comp)
         new_project_version = self.__project_cmakelists_file.project_version
         self.__project_cmakelists_file.save()
         self.update_dependency_version(self.__project_cmakelists_file.project_name,
                                        old_project_version, new_project_version)
+        if commit:
+            self.commit_start_version()
 
     def update_dependency_version(self, dependency_name, old_version, new_version):
+        print(f"INFO - Update dependency '{dependency_name}' from version {old_version} to {new_version}.")
         cmakelists_files = glob.glob("**/CMakeLists.txt", recursive=True)
         for cmakelists_file_path in cmakelists_files:
             cmakelists_file = CMakeListsFile()
@@ -177,18 +183,29 @@ class CMakeProject:
         self.__repository.git.checkout(f'{branch}')
 
     def commit_start_version(self):
-        files = [item.a_path for item in self.__repository.index.diff(None)]
-        print(f"INFO - Add modified files ({len(files)}).")
-        self.__repository.index.add(files)
-        version = self.__project_cmakelists_file.project_version
+        version = self.project_version()
         print(f"INFO - Commit start version {version}.")
+        files = [item.a_path for item in self.__repository.index.diff(None)]
+        self.__repository.index.add(files)
         commit_msg = f"v{version}: Start version {version}."
         self.__repository.index.commit(commit_msg)
+
+    def set_submodule_branch(self, submodule_name, branch, commit=True):
+        print(f"INFO - Set submodule branch {submodule_name}.branch = {branch}.")
+        submodule = self.__repository.submodule(submodule_name)
+        cf_writer: git.config.SectionConstraint = submodule.config_writer()
+        cf_writer.set_value('branch', branch).release()
+        self.__git.execute("git submodule update --remote".split())
+        if commit:
+            print(f"INFO - Commit submodule branch changes.")
+            self.__git.execute(f"git add {submodule.path}".split())
+            commit_msg = f"v{self.project_version()}: Use {submodule.name} {branch}."
+            self.__repository.index.commit(commit_msg)
 
 
 cmake_project = CMakeProject(".")
 print(f"INFO - CMake project {cmake_project.project_name()} {cmake_project.project_version()}")
 cmake_project.upgrade_project_version(ReleaseComponent.MINOR)
-cmake_project.commit_start_version()
+cmake_project.set_submodule_branch('cmake/cmtk', 'release/0.6')
 
 print('EXIT SUCCESS')
