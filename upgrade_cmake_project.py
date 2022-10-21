@@ -159,7 +159,7 @@ class CMakeProject:
         return self.__project_cmakelists_file.project_version
 
     def upgrade_project_version(self, release_comp: ReleaseComponent, commit=True):
-        print(f"INFO - Upgrade project {release_comp} version.")
+        print(f"INFO - Upgrade project {release_comp.name} version.")
         old_project_version = self.__project_cmakelists_file.project_version
         self.__project_cmakelists_file.upgrade_project_version(release_comp)
         new_project_version = self.__project_cmakelists_file.project_version
@@ -205,6 +205,7 @@ class CMakeProject:
 
 cmake_project = CMakeProject(".")
 print(f"INFO - CMake project {cmake_project.project_name()} {cmake_project.project_version()}")
+cmake_project.checkout_develop_branch()
 cmake_project.upgrade_project_version(ReleaseComponent.MINOR)
 cmake_project.set_submodule_branch('cmake/cmtk', 'release/0.6')
 
