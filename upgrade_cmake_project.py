@@ -202,11 +202,28 @@ class CMakeProject:
             commit_msg = f"v{self.project_version()}: Use {submodule.name} {branch}."
             self.__repository.index.commit(commit_msg)
 
+    def flow_release_start(self):
+        version = self.project_version()
+        print(f"INFO - Start release release/{version}.")
+        self.__repository.git.execute(f"git flow release start {version}".split())
+        self.__repository.git.execute(f"git flow release publish {version}".split())
+        self.__repository.git.push(self.__repository.remote().name, self.__repository.active_branch.name)
+
+    def flow_release_finish(self):
+        version = self.project_version()
+        print(f"INFO - Finish release release/{version}.")
+        self.__repository.git.execute(f"git flow release finish -m'Tag {version}' "
+                                      f"--pushproduction --pushdevelop --pushtag --keepremote --nokeeplocal --nodevelopmerge  "
+                                      f"{version}".split())
+        self.checkout_develop_branch()
+
 
 cmake_project = CMakeProject(".")
 print(f"INFO - CMake project {cmake_project.project_name()} {cmake_project.project_version()}")
 cmake_project.checkout_develop_branch()
 cmake_project.upgrade_project_version(ReleaseComponent.MINOR)
 cmake_project.set_submodule_branch('cmake/cmtk', 'release/0.6')
+cmake_project.flow_release_start()
+cmake_project.flow_release_finish()
 
 print('EXIT SUCCESS')
