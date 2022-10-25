@@ -112,6 +112,8 @@ class ProjectCMakeListsFile(CMakeListsFile):
         epoch = ver.epoch
         v_release = list(ver.release)
         v_release[release_comp] += 1
+        for i in range(int(release_comp) + 1, len(v_release)):
+            v_release[i] = 0
         release_segment = ".".join(str(x) for x in v_release)
         pre = "".join(str(x) for x in ver.pre) if ver.is_prerelease else ''
         post = f".post{ver.post}" if ver.is_postrelease else ''
