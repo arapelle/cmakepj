@@ -147,10 +147,13 @@ class ProjectCMakeListsFile(CMakeListsFile):
 class CMakeProject:
     def __init__(self, repository_path):
         print(f"INFO - Load git repository.")
-        self.__git = git.Git = git.Git(git.Git.GIT_PYTHON_GIT_EXECUTABLE)
         self.__repository = Repo(repository_path)
+        self.__git = git.Git = self.__repository.git
         print(f"INFO - Load project CMakeLists.txt.")
         self.__project_cmakelists_file = ProjectCMakeListsFile(f"{repository_path}/CMakeLists.txt")
+
+    def git_repository(self):
+        return self.__repository
 
     def project_name(self):
         return self.__project_cmakelists_file.project_name
@@ -202,6 +205,44 @@ class CMakeProject:
             commit_msg = f"v{self.project_version()}: Use {submodule.name} {branch}."
             self.__repository.index.commit(commit_msg)
 
+    def upgrade_submodule_branch_to_last_release(self, submodule_name, commit=True):
+        print(f"INFO - Upgrade submodule branch {submodule_name} to last release.")
+        submodule = self.__repository.submodule(submodule_name)
+        last_release_branch = self.last_release_branch(submodule.url)
+        self.set_submodule_branch(submodule_name, last_release_branch[1], commit)
+
+    def last_release_branch(self, repository_url, release_prefix="release/"):
+        repo_info = self.__git.execute(f"git ls-remote {repository_url}".split())
+        repo_lines = repo_info.splitlines()
+        release_tag_regex = re.compile("refs/tags/([^{]*)$")
+        release_branch_regex = re.compile("refs/heads/(" + release_prefix + "[^{]*)$")
+        tag_versions = []
+        for repo_line in repo_lines:
+            match = release_tag_regex.search(str(repo_line))
+            if match:
+                tag_match = match.group(1)
+                tag_version = self.__find_version_in_str(tag_match)
+                if tag_version:
+                    tag_versions.append(tag_version)
+        release_branches = dict()
+        for repo_line in repo_lines:
+            match = release_branch_regex.search(str(repo_line))
+            if match:
+                branch_name = match.group(1)
+                branch_version = self.__find_version_in_str(branch_name)
+                if branch_version and branch_version in tag_versions:
+                    release_branches[branch_version] = branch_name
+        print(release_branches)
+        return list(release_branches.items())[-1] if len(release_branches) > 0 else None
+
+    @staticmethod
+    def __find_version_in_str(input_str: str):
+        version_regex = re.compile(r"(" + packaging.version.VERSION_PATTERN + r")", re.VERBOSE | re.IGNORECASE)
+        match = version_regex.search(input_str)
+        if match:
+            return match.group(1)
+        return None
+
     def flow_release_start(self):
         version = self.project_version()
         print(f"INFO - Start release release/{version}.")
@@ -221,9 +262,11 @@ class CMakeProject:
 cmake_project = CMakeProject(".")
 print(f"INFO - CMake project {cmake_project.project_name()} {cmake_project.project_version()}")
 cmake_project.checkout_develop_branch()
-cmake_project.upgrade_project_version(ReleaseComponent.MINOR)
+# cmake_project.upgrade_project_version(ReleaseComponent.MINOR)
 cmake_project.set_submodule_branch('cmake/cmtk', 'release/0.6')
-cmake_project.flow_release_start()
-cmake_project.flow_release_finish()
+cmake_project.upgrade_submodule_branch_to_last_release('cmake/cmtk')
+# cmake_project.flow_release_start()
+# cmake_project.flow_release_finish()
+cmake_project.checkout_develop_branch()
 
 print('EXIT SUCCESS')
