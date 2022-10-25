@@ -263,13 +263,12 @@ class CMakeProject:
         self.finish_release()
 
 
-cmake_project = CMakeProject(".")
-print(f"INFO - CMake project {cmake_project.project_name()} {cmake_project.project_version()}")
-cmake_project.checkout_develop_branch()
-# cmake_project.upgrade_project_version(ReleaseComponent.MINOR)
-cmake_project.set_submodule_branch('cmake/cmtk', 'release/0.6')
-cmake_project.upgrade_submodule_branch_to_last_release('cmake/cmtk')
-# cmake_project.create_release()
-cmake_project.checkout_develop_branch()
-
-print('EXIT SUCCESS')
+if __name__ == "__main__":
+    cmake_project = CMakeProject(".")
+    print(f"INFO - CMake project {cmake_project.project_name()} {cmake_project.project_version()}")
+    cmake_project.checkout_develop_branch()
+    # cmake_project.upgrade_project_version(ReleaseComponent.MINOR)
+    cmake_project.upgrade_submodule_branch_to_last_release('cmake/cmtk')
+    # cmake_project.create_release()
+    cmake_project.checkout_develop_branch()
+    print('EXIT SUCCESS')
