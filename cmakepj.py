@@ -297,13 +297,14 @@ class CLCommand:
             exit(-1)
 
 
-class Cmpj(CLCommand):
+class Cmakepj(CLCommand):
     def __init__(self):
         super().__init__()
         self.arg_parser = argparse.ArgumentParser(self.class_name_label())
         subparsers = self.arg_parser.add_subparsers(dest=self.subcommand_label(), required=True)
         self.version = self.Version(subparsers)
         self.release = self.Release(subparsers)
+        self.submodule = self.Submodule(subparsers)
 
     class Version(CLCommand):
         def __init__(self, subparsers):
@@ -340,22 +341,50 @@ class Cmpj(CLCommand):
             super().__init__()
             self.arg_parser: argparse.ArgumentParser = subparsers.add_parser(self.class_name_label())
             self.arg_parser.add_argument(self.subcommand_label(), choices=["start", "finish", "create"])
-            # subparsers = self.arg_parser.add_subparsers(dest=self.subcommand_name(), required=True)
-            # subparsers.add_parser("start", help="Start a new release.")
-            # subparsers.add_parser("finish", help="Finish a new release.")
-            # subparsers.add_parser("create", help="Create a new release.")
 
         def start(self, args):
-            print("release start")
-            pass
+            cmake_project = CMakeProject(".")
+            cmake_project.start_release()
 
         def finish(self, args):
-            print("release finish")
-            pass
+            cmake_project = CMakeProject(".")
+            cmake_project.finish_release()
 
         def create(self, args):
             self.start(args)
             self.finish(args)
+
+    class Submodule(CLCommand):
+        def __init__(self, subparsers):
+            super().__init__()
+            self.__set_branch_parser = None
+            self.arg_parser = subparsers.add_parser(self.class_name_label())
+            subparsers = self.arg_parser.add_subparsers(dest=self.subcommand_label(), required=True)
+            self.add_set_branch_parser(subparsers)
+
+        def add_set_branch_parser(self, subparsers):
+            self.__set_branch_parser = subparsers.add_parser("set-branch")
+            self.__set_branch_parser.add_argument("module")
+            self.__set_branch_parser.add_argument("branch", nargs='?')
+            self.__set_branch_parser.add_argument("-l", "--last", action="store_true")
+            self.__set_branch_parser.add_argument("-c", "--commit", action="store_true")
+            self.__set_branch_parser.add_argument("-p", "--push", action="store_true")
+
+        def set_branch(self, args):
+            cmake_project = CMakeProject(".")
+            if args.last:
+                if args.branch:
+                    self.__set_branch_parser.print_help()
+                    print(f"\nerror: -l, --last option is provided, so branch ({args.branch}) argument is not needed.")
+                    exit(-1)
+                else:
+                    cmake_project.upgrade_submodule_branch_to_last_release(args.module, args.commit)
+            elif args.branch is None:
+                self.__set_branch_parser.print_help()
+                print(f"\nerror: branch argument is required when -l option is not provided.")
+                exit(-1)
+            else:
+                cmake_project.set_submodule_branch(args.module, args.branch, args.commit)
 
 
 if __name__ == "__main__":
@@ -363,10 +392,10 @@ if __name__ == "__main__":
     # cmpj -v --version
     # cmpj create exe|lib|hlib|hw [name]
     # cmpj version set <version> [--commit] [--push]
-    # cmpj version upgrade major|minor|patch [--commit] [--push]
-    # cmpj submodule set-branch <module> <branch> [--last] [--commit] [--push]
+    #. cmpj version upgrade major|minor|patch [--commit] [--push]
+    #. cmpj submodule set-branch <module> <branch> [--last] [--commit] [--push]
     # cmpj dependency upgrade <package> <version> [--last] [--commit] [--push]
-    # cmpj release start|finish|create
+    #. cmpj release start|finish|create
 
     # cmpj version upgrade -cp minor
     # cmpj submodule set-branch cmtk --last
@@ -376,15 +405,7 @@ if __name__ == "__main__":
     # cmpj dependency upgrade arba-core --last
     # cmpj release start|finish|create
 
-    cmpj = Cmpj()
+    cmpj = Cmakepj()
     cmpj.invoke(cmpj.arg_parser.parse_args())
-
-    # cmake_project = CMakeProject(".")
-    # print(f"INFO - CMake project {cmake_project.project_name()} {cmake_project.project_version()}")
-    # # cmake_project.checkout_develop_branch()
-    # # cmake_project.upgrade_project_version(ReleaseComponent.MINOR)
-    # cmake_project.upgrade_submodule_branch_to_last_release('cmake/cmtk')
-    # # cmake_project.create_release()
-    # # cmake_project.checkout_develop_branch()
 
     print('EXIT SUCCESS')
