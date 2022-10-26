@@ -283,6 +283,7 @@ class CLCommand:
 
     def invoke(self, args):
         arg_name = getattr(args, self.subcommand_label())
+        arg_name = arg_name.replace('-', '_')
         if hasattr(self.__class__, arg_name):
             method = getattr(self.__class__, arg_name)
             delattr(args, self.subcommand_label())
