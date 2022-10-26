@@ -293,7 +293,8 @@ class CLCommand:
             delattr(args, self.subcommand_label())
             field.invoke(args)
         else:
-            print(f"Missing {self.subcommand_label()} in {self.__class__.__name__}.")
+            print(f"error: Missing field or method '{arg_name}' in class {self.__class__.__name__}.")
+            exit(-1)
 
 
 class Cmpj(CLCommand):
