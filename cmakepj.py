@@ -171,12 +171,12 @@ class CMakeProject:
         self.__project_cmakelists_file.upgrade_project_version(release_comp)
         new_project_version = self.__project_cmakelists_file.project_version
         self.__project_cmakelists_file.save()
-        self.update_dependency_version(self.__project_cmakelists_file.project_name,
-                                       old_project_version, new_project_version)
+        self.upgrade_dependency_version(self.__project_cmakelists_file.project_name,
+                                        old_project_version, new_project_version)
         if commit:
             self.commit_start_version()
 
-    def update_dependency_version(self, dependency_name, old_version, new_version):
+    def upgrade_dependency_version(self, dependency_name, old_version, new_version):
         print(f"INFO - Update dependency '{dependency_name}' from version {old_version} to {new_version}.")
         cmakelists_files = glob.glob("**/CMakeLists.txt", recursive=True)
         for cmakelists_file_path in cmakelists_files:
@@ -386,6 +386,38 @@ class Cmakepj(CLCommand):
             else:
                 cmake_project.set_submodule_branch(args.module, args.branch, args.commit)
 
+    class Dependency(CLCommand):
+        def __init__(self, subparsers):
+            super().__init__()
+            self.__upgrade_parser = None
+            self.arg_parser = subparsers.add_parser(self.class_name_label())
+            subparsers = self.arg_parser.add_subparsers(dest=self.subcommand_label(), required=True)
+            self.add_upgrade_parser(subparsers)
+
+        def add_upgrade_parser(self, subparsers):
+            self.__upgrade_parser = subparsers.add_parser("upgrade")
+            self.__upgrade_parser.add_argument("package")
+            self.__upgrade_parser.add_argument("version", nargs='?')
+            self.__upgrade_parser.add_argument("-l", "--last", action="store_true")
+            self.__upgrade_parser.add_argument("-c", "--commit", action="store_true")
+            self.__upgrade_parser.add_argument("-p", "--push", action="store_true")
+
+        def upgrade(self, args):
+            cmake_project = CMakeProject(".")
+            if args.last:
+                if args.version:
+                    self.__upgrade_parser.print_help()
+                    print(f"\nerror: -l, --last option is provided, so version ({args.version}) argument is not needed.")
+                    exit(-1)
+                else:
+                    raise "error: cmakepj dependency upgrade -l <package>  is not implemented yet!"
+            elif args.version is None:
+                self.__upgrade_parser.print_help()
+                print(f"\nerror: version argument is required when -l option is not provided.")
+                exit(-1)
+            else:
+                cmake_project.upgrade_dependency_version(args.package, args.version, args.commit)
+
 
 if __name__ == "__main__":
     # https://iridakos.com/programming/2018/03/01/bash-programmable-completion-tutorial
@@ -394,7 +426,7 @@ if __name__ == "__main__":
     # cmpj version set <version> [--commit] [--push]
     #. cmpj version upgrade major|minor|patch [--commit] [--push]
     #. cmpj submodule set-branch <module> <branch> [--last] [--commit] [--push]
-    # cmpj dependency upgrade <package> <version> [--last] [--commit] [--push]
+    #. cmpj dependency upgrade <package> <version> [--last] [--commit] [--push]
     #. cmpj release start|finish|create
 
     # cmpj version upgrade -cp minor
