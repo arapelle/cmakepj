@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import argparse
 import glob
 import os
 import pathlib
@@ -153,6 +154,7 @@ class CMakeProject:
         self.__git = git.Git = self.__repository.git
         print(f"INFO - Load project CMakeLists.txt.")
         self.__project_cmakelists_file = ProjectCMakeListsFile(f"{repository_path}/CMakeLists.txt")
+        print(f"INFO - CMake project {self.project_name()} {self.project_version()}")
 
     def git_repository(self):
         return self.__repository
@@ -265,12 +267,122 @@ class CMakeProject:
         self.finish_release()
 
 
+class CLCommand:
+    def __init__(self, arg_name=None):
+        self.__subcommand_label = arg_name if arg_name else self.default_subcommand_label()
+
+    def subcommand_label(self):
+        return self.__subcommand_label
+
+    def default_subcommand_label(self):
+        return f"{self.class_name_label()}-subcommand"
+
+    def class_name_label(self):
+        name_comps = re.findall('[A-Z][^A-Z]*', self.__class__.__name__)
+        return '-'.join([x.lower() for x in name_comps])
+
+    def invoke(self, args):
+        arg_name = getattr(args, self.subcommand_label())
+        if hasattr(self.__class__, arg_name):
+            method = getattr(self.__class__, arg_name)
+            delattr(args, self.subcommand_label())
+            method(self, args)
+        elif hasattr(self, arg_name):
+            field = getattr(self, arg_name)
+            delattr(args, self.subcommand_label())
+            field.invoke(args)
+        else:
+            print(f"Missing {self.subcommand_label()} in {self.__class__.__name__}.")
+
+
+class Cmpj(CLCommand):
+    def __init__(self):
+        super().__init__()
+        self.arg_parser = argparse.ArgumentParser(self.class_name_label())
+        subparsers = self.arg_parser.add_subparsers(dest=self.subcommand_label(), required=True)
+        self.version = self.Version(subparsers)
+        self.release = self.Release(subparsers)
+
+    class Version(CLCommand):
+        def __init__(self, subparsers):
+            super().__init__()
+            self.arg_parser = subparsers.add_parser(self.class_name_label())
+            subparsers = self.arg_parser.add_subparsers(dest=self.subcommand_label(), required=True)
+            self.add_set_parser(subparsers)
+            self.add_upgrade_parser(subparsers)
+
+        def add_set_parser(self, subparsers):
+            parser: argparse.ArgumentParser = subparsers.add_parser("set")
+            parser.add_argument("version")
+            parser.add_argument("-c", "--commit", action="store_true")
+            parser.add_argument("-p", "--push", action="store_true")
+
+        def add_upgrade_parser(self, subparsers):
+            parser: argparse.ArgumentParser = subparsers.add_parser("upgrade")
+            parser.add_argument("release_component", choices=["major", "minor", "patch"])
+            parser.add_argument("-c", "--commit", action="store_true")
+            parser.add_argument("-p", "--push", action="store_true")
+
+        def set(self, args):
+            print(args)
+            pass
+
+        def upgrade(self, args):
+            cmake_project = CMakeProject(".")
+            rcomp = args.release_component.upper()
+            rcomp = ReleaseComponent[rcomp]
+            cmake_project.upgrade_project_version(rcomp, args.commit)
+
+    class Release(CLCommand):
+        def __init__(self, subparsers):
+            super().__init__()
+            self.arg_parser: argparse.ArgumentParser = subparsers.add_parser(self.class_name_label())
+            self.arg_parser.add_argument(self.subcommand_label(), choices=["start", "finish", "create"])
+            # subparsers = self.arg_parser.add_subparsers(dest=self.subcommand_name(), required=True)
+            # subparsers.add_parser("start", help="Start a new release.")
+            # subparsers.add_parser("finish", help="Finish a new release.")
+            # subparsers.add_parser("create", help="Create a new release.")
+
+        def start(self, args):
+            print("release start")
+            pass
+
+        def finish(self, args):
+            print("release finish")
+            pass
+
+        def create(self, args):
+            self.start(args)
+            self.finish(args)
+
+
 if __name__ == "__main__":
-    cmake_project = CMakeProject(".")
-    print(f"INFO - CMake project {cmake_project.project_name()} {cmake_project.project_version()}")
-    cmake_project.checkout_develop_branch()
-    # cmake_project.upgrade_project_version(ReleaseComponent.MINOR)
-    cmake_project.upgrade_submodule_branch_to_last_release('cmake/cmtk')
-    # cmake_project.create_release()
-    cmake_project.checkout_develop_branch()
+    # https://iridakos.com/programming/2018/03/01/bash-programmable-completion-tutorial
+    # cmpj -v --version
+    # cmpj create exe|lib|hlib|hw [name]
+    # cmpj version set <version> [--commit] [--push]
+    # cmpj version upgrade major|minor|patch [--commit] [--push]
+    # cmpj submodule set-branch <module> <branch> [--last] [--commit] [--push]
+    # cmpj dependency upgrade <package> <version> [--last] [--commit] [--push]
+    # cmpj release start|finish|create
+
+    # cmpj version upgrade -cp minor
+    # cmpj submodule set-branch cmtk --last
+    # cmpj release start|finish|create
+
+    # cmpj version upgrade -cp minor
+    # cmpj dependency upgrade arba-core --last
+    # cmpj release start|finish|create
+
+    cmpj = Cmpj()
+    cmpj.invoke(cmpj.arg_parser.parse_args())
+
+    # cmake_project = CMakeProject(".")
+    # print(f"INFO - CMake project {cmake_project.project_name()} {cmake_project.project_version()}")
+    # # cmake_project.checkout_develop_branch()
+    # # cmake_project.upgrade_project_version(ReleaseComponent.MINOR)
+    # cmake_project.upgrade_submodule_branch_to_last_release('cmake/cmtk')
+    # # cmake_project.create_release()
+    # # cmake_project.checkout_develop_branch()
+
     print('EXIT SUCCESS')
