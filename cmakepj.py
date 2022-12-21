@@ -312,7 +312,7 @@ class Cmakepj(CLCommand):
             self.arg_parser = subparsers.add_parser(self.class_name_label())
             subparsers = self.arg_parser.add_subparsers(dest=self.subcommand_label(), required=True)
             self.add_set_parser(subparsers)
-            self.add_upgrade_parser(subparsers)
+            self.add_up_parser(subparsers)
 
         def add_set_parser(self, subparsers):
             parser: argparse.ArgumentParser = subparsers.add_parser("set")
@@ -320,8 +320,8 @@ class Cmakepj(CLCommand):
             parser.add_argument("-c", "--commit", action="store_true")
             parser.add_argument("-p", "--push", action="store_true")
 
-        def add_upgrade_parser(self, subparsers):
-            parser: argparse.ArgumentParser = subparsers.add_parser("upgrade")
+        def add_up_parser(self, subparsers):
+            parser: argparse.ArgumentParser = subparsers.add_parser("up")
             parser.add_argument("release_component", choices=["major", "minor", "patch"])
             parser.add_argument("-c", "--commit", action="store_true")
             parser.add_argument("-p", "--push", action="store_true")
@@ -330,7 +330,7 @@ class Cmakepj(CLCommand):
             print(args)
             pass
 
-        def upgrade(self, args):
+        def up(self, args):
             cmake_project = CMakeProject(".")
             rcomp = args.release_component.upper()
             rcomp = ReleaseComponent[rcomp]
