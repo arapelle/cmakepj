@@ -28,18 +28,18 @@ class CMakeProject:
     def project_version(self):
         return self.__project_cmakelists_file.project_version
 
-    def upgrade_project_version(self, release_comp: ReleaseComponent, commit=True):
+    def up_project_version(self, release_comp: ReleaseComponent, commit=True):
         print(f"INFO - Upgrade project {release_comp.name} version.")
         old_project_version = self.__project_cmakelists_file.project_version
-        self.__project_cmakelists_file.upgrade_project_version(release_comp)
+        self.__project_cmakelists_file.up_project_version(release_comp)
         new_project_version = self.__project_cmakelists_file.project_version
         self.__project_cmakelists_file.save()
-        self.upgrade_dependency_version(self.__project_cmakelists_file.project_name,
-                                        old_project_version, new_project_version)
+        self.update_dependency_version(self.__project_cmakelists_file.project_name,
+                                       old_project_version, new_project_version)
         if commit:
             self.commit_start_version()
 
-    def upgrade_dependency_version(self, dependency_name, old_version, new_version):
+    def update_dependency_version(self, dependency_name, old_version, new_version):
         print(f"INFO - Update dependency '{dependency_name}' from version {old_version} to {new_version}.")
         cmakelists_files = glob.glob("**/CMakeLists.txt", recursive=True)
         for cmakelists_file_path in cmakelists_files:

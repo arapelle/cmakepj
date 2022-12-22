@@ -67,7 +67,7 @@ class ProjectCMakeListsFile(CMakeListsFile):
         new_version = str(Version(upgrade))
         return new_version
 
-    def upgrade_project_version(self, release_comp: ReleaseComponent):
+    def up_project_version(self, release_comp: ReleaseComponent):
         self.__project_version = self.upgraded_version(release_comp)
         new_pj_version_declaration = self.__format_project_version_declaration(self.__project_version)
         self._contents = self._contents.replace(self.__find_project_version_declaration(), new_pj_version_declaration)

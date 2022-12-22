@@ -43,7 +43,7 @@ class Cmakepj(CLCommand):
             cmake_project = CMakeProject(".")
             rcomp = args.release_component.upper()
             rcomp = ReleaseComponent[rcomp]
-            cmake_project.upgrade_project_version(rcomp, args.commit)
+            cmake_project.up_project_version(rcomp, args.commit)
 
     class Release(CLCommand):
         def __init__(self, subparsers):
@@ -125,7 +125,7 @@ class Cmakepj(CLCommand):
                 print(f"\nerror: version argument is required when -l option is not provided.")
                 exit(-1)
             else:
-                cmake_project.upgrade_dependency_version(args.package, args.version, args.commit)
+                cmake_project.update_dependency_version(args.package, args.version, args.commit)
 
 
 if __name__ == "__main__":
