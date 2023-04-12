@@ -120,9 +120,13 @@ class CMakeProject:
     def finish_release(self):
         version = self.project_version()
         print(f"INFO - Finish release release/{version}.")
-        self.__repository.git.execute(f"git flow release finish -m'Tag {version}' "
-                                      f"--pushproduction --pushdevelop --pushtag --keepremote --nokeeplocal --nodevelopmerge  "
-                                      f"{version}".split())
+        # To get git-flow argument list: git flow release finish -h
+        gf_cmd = []
+        gf_cmd.extend("git flow release finish".split())
+        gf_cmd.append(f"-m'Tag {version}'")
+        gf_cmd.extend(f"--pushproduction --pushdevelop --pushtag --keepremote --nokeeplocal --nodevelopmerge".split())
+        gf_cmd.append(f"'{version}'")
+        self.__repository.git.execute(gf_cmd)
         self.checkout_develop_branch()
 
     def create_release(self):
