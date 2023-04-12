@@ -33,7 +33,7 @@ class ProjectCMakeListsFile(CMakeListsFile):
         regex = ProjectCMakeListsFile.__project_name_regex()
         match: re.Match = regex.search(self._contents)
         if match is None:
-            raise Exception("ERROR - Project name not found.")
+            raise Exception("ERROR - Project name: set(PROJECT_NAME \"...\") is missing.")
         return match.group(1)
 
     def __find_project_version(self):
@@ -48,7 +48,7 @@ class ProjectCMakeListsFile(CMakeListsFile):
         pr_version_regex = ProjectCMakeListsFile.__project_version_regex()
         pr_version_match: re.Match = pr_version_regex.search(self._contents)
         if pr_version_match is None:
-            raise Exception("ERROR - Project version not found.")
+            raise Exception("ERROR - Project version: set(PROJECT_VERSION \"...\") is missing.")
         return pr_version_match
 
     def upgraded_version(self, release_comp: ReleaseComponent):
