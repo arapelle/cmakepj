@@ -133,7 +133,7 @@ if __name__ == "__main__":
     # cmpj -v --version
     # cmpj create exe|lib|hlib|hw [name]
     # cmpj version set <version> [--commit] [--push]
-    #. cmpj version upgrade major|minor|patch [--commit] [--push]
+    #. cmpj version up major|minor|patch [--commit] [--push]
     #. cmpj submodule set-branch <module> <branch> [--last] [--commit] [--push]
     #. cmpj dependency upgrade <package> <version> [--last] [--commit] [--push]
     #. cmpj release start|finish|create
