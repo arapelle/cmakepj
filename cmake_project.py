@@ -123,7 +123,7 @@ class CMakeProject:
         # To get git-flow argument list: git flow release finish -h
         gf_cmd = []
         gf_cmd.extend("git flow release finish".split())
-        gf_cmd.append(f"-m'Tag {version}'")
+        gf_cmd.extend(["-m", f"\"Tag {version}\""])
         gf_cmd.extend(f"--pushproduction --pushdevelop --pushtag --keepremote --nokeeplocal --nodevelopmerge".split())
         gf_cmd.append(f"'{version}'")
         self.__repository.git.execute(gf_cmd)
