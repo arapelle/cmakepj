@@ -113,9 +113,9 @@ class CMakeProject:
     def start_release(self):
         version = self.project_version()
         print(f"INFO - Start release release/{version}.")
-        self.__repository.git.execute(f"git flow release start {version}".split())
-        self.__repository.git.execute(f"git flow release publish {version}".split())
-        self.__repository.git.push(self.__repository.remote().name, self.__repository.active_branch.name)
+        self.__git.execute(f"git flow release start {version}".split())
+        self.__git.execute(f"git flow release publish {version}".split())
+        self.__git.push(self.__repository.remote().name, self.__repository.active_branch.name)
 
     def finish_release(self):
         version = self.project_version()
